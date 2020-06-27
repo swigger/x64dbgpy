@@ -86,81 +86,58 @@ static bool OpenFileDialog(wchar_t Buffer[MAX_PATH])
     return (FALSE != GetOpenFileNameW(&sOpenFileName));
 }
 
-static bool FileExists(const wchar_t* file)
-{
-    DWORD attrib = GetFileAttributesW(file);
-    return (attrib != INVALID_FILE_ATTRIBUTES && !(attrib & FILE_ATTRIBUTE_DIRECTORY));
-}
-
 static bool ExecutePythonScript(const wchar_t* szFileName, int argc, char* argv[])
 {
-    if(!FileExists(szFileName))
+    wchar_t szCurrentDir[MAX_PATH] = L"";
+    GetCurrentDirectoryW(_countof(szCurrentDir), szCurrentDir);
+
+    FILE* fp = _wfopen(szFileName, L"r");
+    if (!fp)
     {
         _plugin_logputs("[PYTHON] File does not exist...");
         return false;
     }
-
-    std::vector<wchar_t> szShortFileName;
-    szShortFileName.resize(wcslen(szFileName) * 2);
-    GetShortPathNameW(szFileName, szShortFileName.data(), DWORD(szShortFileName.size()));
-    String szFileNameA = Utf16ToUtf8(szShortFileName.data());
-    PyObject* PyFileObject = PyFile_FromString((char*)szFileNameA.c_str(), "r");
-    if(PyFileObject == NULL)
+    if (argc > 0)
     {
-        _plugin_logputs("[PYTHON] Could not open file....");
-        PyErr_PrintEx(0);
-        return false;
-    }
-
-    bool local = false;
-
-    PyObject* module, *dict;
-    module = PyImport_AddModule("__main__");
-    dict = PyModule_GetDict(module);
-    if(local)
-    {
-        dict = PyDict_Copy(dict);
-    }
-    else
-    {
-        Py_INCREF(dict); // avoid to further distinguish between local and global dict
-    }
-
-    if(PyDict_GetItemString(dict, "__file__") == NULL)
-    {
-        PyObject* f = PyString_FromString(szFileNameA.c_str());
-        if(f == NULL)
+        std::vector<wchar_t*> argv2;
+        for (int i = 0; i < argc; ++i)
         {
-            Py_DECREF(dict);
-            return false;
+            size_t la = strlen(argv[i]) + 3;
+            wchar_t* a = (wchar_t*)malloc(la * sizeof(wchar_t));
+            MultiByteToWideChar(CP_UTF8, 0, argv[i], -1, a, la);
+            argv2.push_back(a);
         }
-        if(PyDict_SetItemString(dict, "__file__", f) < 0)
-        {
-            Py_DECREF(f);
-            Py_DECREF(dict);
-            return false;
-        }
-        Py_DECREF(f);
+        argv2.push_back(nullptr);
+        PySys_SetArgv(argc, &argv2[0]);
+        for (auto p : argv2) free(p);
+        argv2.clear();
     }
 
-    wchar_t szCurrentDir[MAX_PATH] = L"";
-    GetCurrentDirectoryW(_countof(szCurrentDir), szCurrentDir);
-
-    if(argc > 0)
-        PySys_SetArgv(argc, argv);
-    auto result = PyRun_File(PyFile_AsFile(PyFileObject), szFileNameA.c_str(), Py_file_input, dict, dict);
+    size_t fnalen = wcslen(szFileName) * 3 + 10;
+    char* fna = (char*)malloc(fnalen);
+    WideCharToMultiByte(CP_UTF8, 0, szFileName, -1, fna, fnalen, 0, 0);
+    auto result = PyRun_SimpleFileExFlags(fp, fna, 0, NULL);
+    free(fna);
     SetCurrentDirectoryW(szCurrentDir);
-    Py_DECREF(dict);
-    Py_DECREF(PyFileObject);
+    fclose(fp);
 
-    if(result == NULL)
+    if (result == NULL)
     {
-        if(PyErr_ExceptionMatches(PyExc_SystemExit))
-            _plugin_logprintf("[PYTHON] SystemExit...\n");
-        else
-            _plugin_logprintf("[PYTHON] Exception...\n");
-        PyErr_PrintEx(1);
-        return false;
+        PyObject* exception, * v, * tb;
+        PyErr_Fetch(&exception, &v, &tb);
+        bool has_exception = exception != NULL;
+        Py_XDECREF(exception);
+        Py_XDECREF(v);
+        Py_XDECREF(tb);
+        if (has_exception)
+        {
+            if (PyErr_ExceptionMatches(PyExc_SystemExit))
+                _plugin_logprintf("[PYTHON] SystemExit...\n");
+            else
+                _plugin_logprintf("[PYTHON] Exception...\n");
+            PyErr_PrintEx(1);
+            return false;
+        }
     }
     else
         Py_DECREF(result);
@@ -387,10 +364,9 @@ static void cbUnloadDllCallback(CBTYPE cbType, void* info)
 {
     LPUNLOAD_DLL_DEBUG_INFO UnloadDll = ((PLUG_CB_UNLOADDLL*)info)->UnloadDll;
 
-    pyCallback("unload_dll", Py_BuildValue(
-                   "{s:N}",
-                   "lpBaseOfDll", PyInt_FromSize_t((size_t)UnloadDll->lpBaseOfDll)
-               ));
+    pyCallback("unload_dll", Py_BuildValue("{s:N}",
+        "lpBaseOfDll", PyLong_FromUnsignedLongLong((size_t)UnloadDll->lpBaseOfDll)
+    ));
 }
 
 static void cbLoadDllCallback(CBTYPE cbType, void* info)
@@ -404,11 +380,11 @@ static void cbLoadDllCallback(CBTYPE cbType, void* info)
 
     pLoadDll = Py_BuildValue(
                    "{s:N, s:N, s:k, s:k, s:N, s:H}",
-                   "hFile", PyInt_FromSize_t((size_t)LoadDll->hFile),
-                   "lpBaseOfDll", PyInt_FromSize_t((size_t)LoadDll->lpBaseOfDll),
+                   "hFile", PyLong_FromUnsignedLongLong((size_t)LoadDll->hFile),
+                   "lpBaseOfDll", PyLong_FromUnsignedLongLong((size_t)LoadDll->lpBaseOfDll),
                    "dwDebugInfoFileOffset", LoadDll->dwDebugInfoFileOffset,
                    "nDebugInfoSize", LoadDll->nDebugInfoSize,
-                   "lpImageName", PyInt_FromSize_t((size_t)LoadDll->lpImageName),
+                   "lpImageName", PyLong_FromUnsignedLongLong((size_t)LoadDll->lpImageName),
                    "fUnicode", LoadDll->fUnicode
                );
     pPdbSig70 = Py_BuildValue(
@@ -484,8 +460,8 @@ static void cbCreateThreadCallback(CBTYPE cbType, void* info)
     pCreateThread = Py_BuildValue(
                         "{s:k, s:N, s:N}",
                         "hThread", CreateThread->hThread,
-                        "lpThreadLocalBase", PyInt_FromSize_t((size_t)CreateThread->lpThreadLocalBase),
-                        "lpStartAddress", PyInt_FromSize_t((size_t)CreateThread->lpThreadLocalBase)
+                        "lpThreadLocalBase", PyLong_FromUnsignedLongLong((size_t)CreateThread->lpThreadLocalBase),
+                        "lpStartAddress", PyLong_FromUnsignedLongLong((size_t)CreateThread->lpThreadLocalBase)
                     );
     pyCallback("create_thread", Py_BuildValue(
                    "{s:k, s:N}",
@@ -518,15 +494,15 @@ static void cbCreateProcessCallback(CBTYPE cbType, void* info)
 
     pCreateProcessInfo = Py_BuildValue(
                              "{s:N, s:N, s:N, s:N, s:k, s:k, s:N, s:N, s:N, s:H}",
-                             "hFile", PyInt_FromSize_t((size_t)CreateProcessInfo->hFile),
-                             "hProcess", PyInt_FromSize_t((size_t)CreateProcessInfo->hProcess),
-                             "hThread", PyInt_FromSize_t((size_t)CreateProcessInfo->hThread),
-                             "lpBaseOfImage", PyInt_FromSize_t((size_t)CreateProcessInfo->lpBaseOfImage),
+                             "hFile", PyLong_FromUnsignedLongLong((size_t)CreateProcessInfo->hFile),
+                             "hProcess", PyLong_FromUnsignedLongLong((size_t)CreateProcessInfo->hProcess),
+                             "hThread", PyLong_FromUnsignedLongLong((size_t)CreateProcessInfo->hThread),
+                             "lpBaseOfImage", PyLong_FromUnsignedLongLong((size_t)CreateProcessInfo->lpBaseOfImage),
                              "dwDebugInfoFileOffset", CreateProcessInfo->dwDebugInfoFileOffset,
                              "nDebugInfoSize", CreateProcessInfo->nDebugInfoSize,
-                             "lpThreadLocalBase", PyInt_FromSize_t((size_t)CreateProcessInfo->lpThreadLocalBase),
-                             "lpStartAddress", PyInt_FromSize_t((size_t)CreateProcessInfo->lpStartAddress),
-                             "lpImageName", PyInt_FromSize_t((size_t)CreateProcessInfo->lpImageName),
+                             "lpThreadLocalBase", PyLong_FromUnsignedLongLong((size_t)CreateProcessInfo->lpThreadLocalBase),
+                             "lpStartAddress", PyLong_FromUnsignedLongLong((size_t)CreateProcessInfo->lpStartAddress),
+                             "lpImageName", PyLong_FromUnsignedLongLong((size_t)CreateProcessInfo->lpImageName),
                              "fUnicode", CreateProcessInfo->fUnicode
                          );
     pPdbSig70 = Py_BuildValue(
@@ -567,8 +543,8 @@ static void cbCreateProcessCallback(CBTYPE cbType, void* info)
                );
     pFdProcessInfo = Py_BuildValue(
                          "{s:N, s:N, s:k, s:k}",
-                         "hProcess", PyInt_FromSize_t((size_t)fdProcessInfo->hProcess),
-                         "hThread", PyInt_FromSize_t((size_t)fdProcessInfo->hThread),
+                         "hProcess", PyLong_FromUnsignedLongLong((size_t)fdProcessInfo->hProcess),
+                         "hThread", PyLong_FromUnsignedLongLong((size_t)fdProcessInfo->hThread),
                          "dwProcessId", fdProcessInfo->dwProcessId,
                          "dwThreadId", fdProcessInfo->dwThreadId
                      );
@@ -592,7 +568,7 @@ static void cbBreakPointCallback(CBTYPE cbType, void* info)
     pyCallback("breakpoint", Py_BuildValue(
                    "{s:i, s:N, s:N, s:N, s:N, s:s, s:s, s:i}",
                    "type", breakpoint->type,
-                   "addr", PyInt_FromSize_t(breakpoint->addr),
+                   "addr", PyLong_FromUnsignedLongLong(breakpoint->addr),
                    "enabled", PyBool_FromLong(breakpoint->enabled),
                    "singleshoot", PyBool_FromLong(breakpoint->singleshoot),
                    "active", PyBool_FromLong(breakpoint->active),
@@ -615,7 +591,7 @@ static void cbTraceExecuteCallback(CBTYPE cbType, void* info)
 
     pTraceExecute = Py_BuildValue(
                         "{s:N, s:N}",
-                        "cip", PyInt_FromSize_t(traceInfo->cip),
+                        "cip", PyLong_FromUnsignedLongLong(traceInfo->cip),
                         "stop", PyBool_FromLong(traceInfo->stop)
                     );
 
@@ -740,12 +716,8 @@ bool pyInit(PLUG_INITSTRUCT* initStruct)
         return false;
     }
     BridgeSettingSet("x64dbgpy", "PythonHome", Utf16ToUtf8(home).c_str());
-    static wchar_t dir[65536] = L"";
-    GetShortPathNameW(home.c_str(), dir, _countof(dir));
-    static char PythonHomeStatic[65536] = "";
-    strncpy_s(PythonHomeStatic, Utf16ToUtf8(dir).c_str(), _TRUNCATE);
     _plugin_logprintf("[PYTHON] PythonHome: \"%s\"\n", Utf16ToUtf8(home).c_str());
-    Py_SetPythonHome(PythonHomeStatic);
+    Py_SetPythonHome(home.c_str());
 
     // Initialize threads & python interpreter
     PyEval_InitThreads();
@@ -753,16 +725,17 @@ bool pyInit(PLUG_INITSTRUCT* initStruct)
     Py_InitializeEx(0);
 
     // Add 'plugins' (current directory) to sys.path
+    wchar_t dir[300];
     GetCurrentDirectoryW(_countof(dir), dir);
     if(dir[wcslen(dir) - 1] != L'\\')
         wcsncat_s(dir, L"\\", _TRUNCATE);
     wcsncat_s(dir, token_paste(L, module_name), _TRUNCATE);
     GetShortPathNameW(dir, dir, _countof(dir));
     _plugin_logputs(Utf16ToUtf8(dir).c_str());
-    PyList_Insert(PySys_GetObject("path"), 0, PyString_FromString(Utf16ToUtf8(dir).c_str()));
+    PyList_Insert(PySys_GetObject("path"), 0, PyUnicode_FromString(Utf16ToUtf8(dir).c_str()));
 
     // Import x64dbgpy
-    pModule = PyImport_Import(PyString_FromString(module_name));
+    pModule = PyImport_Import(PyUnicode_FromString(module_name));
     if(pModule != NULL)
     {
         // Get Event Object

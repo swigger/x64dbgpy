@@ -30,7 +30,7 @@ setup(
     },
     ext_modules=[Extension(
         r'x64dbgpy.pluginsdk._x64dbg', [r'x64dbg.i'],
-        swig_opts=['-Wall', '-c++', '-outputtuple',
+        swig_opts=['-Wall', '-c++',
                    '-outdir', r'x64dbgpy\pluginsdk',
                    '-D"_WIN64"' if is_64bit() else ''],
         language='c++',

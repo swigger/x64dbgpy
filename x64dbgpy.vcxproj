@@ -106,12 +106,12 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v140_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -126,17 +126,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin\x32\</OutDir>
-    <IntDir>$(Platform)\$(Configuration)\</IntDir>
-    <TargetName>x64dbgpy</TargetName>
     <TargetExt>.dp32</TargetExt>
-    <IncludePath>$(Python27x86)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(Python27x86)\libs;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(CurrentVsInstallRoot)\..\..\Shared\Python37_86\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(CurrentVsInstallRoot)\..\..\Shared\Python37_86\libs;$(LibraryPath)</LibraryPath>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)bin\x64\</OutDir>
-    <TargetName>x64dbgpy</TargetName>
     <TargetExt>.dp64</TargetExt>
     <IncludePath>$(Python27x64)\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(Python27x64)\libs;$(LibraryPath)</LibraryPath>
