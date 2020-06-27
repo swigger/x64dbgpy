@@ -2,7 +2,7 @@
 # from os import path
 # import runpy
 # import glob
-from utils import Singleton
+from . utils import Singleton
 
 EVENTS = [
     # 'init_debug',

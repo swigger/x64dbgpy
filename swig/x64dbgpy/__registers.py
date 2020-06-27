@@ -1,7 +1,7 @@
 import functools
-from utils import is_64bit, Singleton
-import pluginsdk._scriptapi
-from pluginsdk.bridgemain import GuiUpdateAllViews
+from . utils import is_64bit, Singleton
+from .pluginsdk import _scriptapi
+from .pluginsdk.bridgemain import GuiUpdateAllViews
 
 
 X86_DEBUG_REGISTERS = (

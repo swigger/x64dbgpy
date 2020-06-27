@@ -11,10 +11,10 @@ copy x64dbgpy.h %RELEASEDIR%\
 call clean.bat
 call "%~dp0\setenv.bat"
 call %VCVARS% x86
-set PYTHONHOME=%PYTHON27X86%
-"%PYTHON27X86%\python.exe" setup.py  install --install-lib=%PLUGINDIR%\x64dbgpy
+echo "%PY32HOME%\python.exe" setup.py  install --install-lib=%PLUGINDIR%\x64dbgpy
+
+%PY32HOME%\python.exe setup.py  install --install-lib=%PLUGINDIR%\x64dbgpy
 @cd ..
 
 copy bin\x32\scriptapi.pyd %PLUGINDIR%\x64dbgpy\
 
-@echo on

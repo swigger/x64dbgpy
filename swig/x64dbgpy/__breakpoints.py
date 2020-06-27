@@ -1,6 +1,6 @@
 from collections import defaultdict
-from utils import Singleton
-from pluginsdk._scriptapi.debug import SetBreakpoint, DeleteBreakpoint, \
+from . utils import Singleton
+from . pluginsdk._scriptapi.debug import SetBreakpoint, DeleteBreakpoint, \
     SetHardwareBreakpoint, DeleteHardwareBreakpoint, HardwareType
 
 NONE = 0

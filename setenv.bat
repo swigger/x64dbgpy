@@ -1,24 +1,23 @@
 @echo off
 
-set MSSDK=1
-set DISTUTILS_USE_SDK=1
-set VCVARS="%LOCALAPPDATA%\Programs\Common\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat"
-	
-IF EXIST "%PROGRAMFILES(X86)%" (
-    FOR /f "tokens=3" %%x IN ('reg query HKLM\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath /ve') DO (
-        set PYTHON27X86=%%x
-        setx PYTHON27X86 %%x
-    )
-    
-    FOR /f "tokens=3" %%x IN ('reg query HKLM\SOFTWARE\Python\PythonCore\2.7\InstallPath /ve') DO (
-        set PYTHON27X64=%%x
-        setx PYTHON27X64 %%x
-    )
-) ELSE (
-    FOR /f "tokens=3" %%x IN ('reg query HKLM\SOFTWARE\Python\PythonCore\2.7\InstallPath /ve') DO (
-        set PYTHON27X86=%%x
-        setx PYTHON27X86 %%x
-    )
-)
 
-@echo on
+set INCLUDE=
+set LIB=
+set LIBPATH=
+set WindowsLibPath=
+
+if not "%__VSCMD_PREINIT_PATH%" == ""  goto revert_path
+:retry
+
+set VCVARS="C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+set PY32HOME="C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python37_86"
+set PY64HOME="C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python37_64"
+
+goto end
+
+:revert_path
+echo reverting Path...
+set Path=%__VSCMD_PREINIT_PATH%
+goto retry
+
+:end

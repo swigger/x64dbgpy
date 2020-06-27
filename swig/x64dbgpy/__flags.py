@@ -1,7 +1,7 @@
 import functools
-import pluginsdk._scriptapi
-from utils import Singleton
-from pluginsdk.bridgemain import GuiUpdateAllViews
+from . pluginsdk import _scriptapi
+from . utils import Singleton
+from . pluginsdk.bridgemain import GuiUpdateAllViews
 
 
 FLAGS = (

@@ -638,10 +638,13 @@ static bool findX64dbgPythonHome(std::wstring & home)
     }
     //Get from the developer environment variable
 #ifdef _WIN64
+    auto regpath = L"SOFTWARE\\Python\\PythonCore\\3.7\\InstallPath";
     auto python27x = _wgetenv(L"PYTHON27X64");
 #else
+    auto regpath = L"SOFTWARE\\Python\\PythonCore\\3.7-32\\InstallPath";
     auto python27x = _wgetenv(L"PYTHON27X86");
 #endif //_WIN64
+
     if(isValidPythonHome(python27x))
     {
 #ifdef _WIN64
@@ -655,7 +658,8 @@ static bool findX64dbgPythonHome(std::wstring & home)
     //Get from registry
     HKEY hKey;
     wchar_t szRegHome[MAX_SETTING_SIZE] = L"";
-    if(RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Python\\PythonCore\\2.7\\InstallPath", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+
+    if(RegOpenKeyExW(HKEY_LOCAL_MACHINE, regpath, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
     {
         DWORD dwSize = sizeof(szRegHome);
         RegQueryValueExW(hKey, nullptr, nullptr, nullptr, LPBYTE(szRegHome), &dwSize);
@@ -680,6 +684,16 @@ static bool findX64dbgPythonHome(std::wstring & home)
 
 bool pyInit(PLUG_INITSTRUCT* initStruct)
 {
+#if 0
+    if (AllocConsole())
+    {
+        freopen("CONIN$", "r", stdin);
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+        printf("hello from C\n");
+    }
+#endif
+
     // Register python command handler
     SCRIPTTYPEINFO info;
     strcpy_s(info.name, "Python");
@@ -731,8 +745,15 @@ bool pyInit(PLUG_INITSTRUCT* initStruct)
         wcsncat_s(dir, L"\\", _TRUNCATE);
     wcsncat_s(dir, token_paste(L, module_name), _TRUNCATE);
     GetShortPathNameW(dir, dir, _countof(dir));
-    _plugin_logputs(Utf16ToUtf8(dir).c_str());
+    _plugin_logprintf("set python load path: %s\n", Utf16ToUtf8(dir).c_str());
     PyList_Insert(PySys_GetObject("path"), 0, PyUnicode_FromString(Utf16ToUtf8(dir).c_str()));
+    PyRun_SimpleString("import sys\nprint(sys.path)\n"
+        "try:\n"
+        "  import x64dbgpy\n"
+        "  print(dir(x64dbgpy))\n"
+        "except Exception as e:\n"
+        "  print(\"exc\",e)\n"
+    );
 
     // Import x64dbgpy
     pModule = PyImport_Import(PyUnicode_FromString(module_name));

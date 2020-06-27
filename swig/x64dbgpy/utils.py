@@ -91,4 +91,4 @@ def x64dbg_pip(args=list()):
         arg_list = shlex.split(args, comments=False, posix=False)
         return pip.main(args=arg_list[1:])
     except ImportError:
-        print "Pip is not installed: Please install pip from 'https://pip.readthedocs.org/en/stable/installing/'"
+        print("Pip is not installed: Please install pip from 'https://pip.readthedocs.org/en/stable/installing/'")

@@ -1,10 +1,10 @@
 import sys
 import signal
 import warnings
-import __builtin__
+import builtins as __builtin__
 from os import path
 import multiprocessing
-from pluginsdk import bridgemain, _plugins
+from . pluginsdk import bridgemain, _plugins
 
 
 def __raw_input(prompt=''):
@@ -76,8 +76,8 @@ STDERR_HOOK = OutputHook('stderr')
 STDERR_HOOK.start()
 
 # Hook raw_input, input (stdin)
-setattr(__builtin__, 'original_raw_input', __builtin__.raw_input)
-setattr(__builtin__, 'raw_input', __raw_input)
+# setattr(__builtin__, 'original_raw_input', __builtin__.raw_input)
+# setattr(__builtin__, 'raw_input', __raw_input)
 setattr(__builtin__, 'original_input', __builtin__.input)
 setattr(__builtin__, 'input', __input)
 
@@ -92,4 +92,4 @@ setattr(signal, 'signal', __signal)
 multiprocessing.set_executable(path.join(sys.exec_prefix, 'pythonw.exe'))
 
 # Print Message That The Hooks Worked!
-print '[PYTHON] stdout, stderr, raw_input hooked!'
+print('[PYTHON] stdout, stderr, input hooked!')

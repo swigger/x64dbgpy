@@ -15,6 +15,9 @@ release/
 *.pyc
 *.VC.db
 *.VC.opendb
+*.pdb
+*.dll
+*.obj
 ipch/
 .idea/
 swig/build/
