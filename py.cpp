@@ -121,7 +121,7 @@ static bool ExecutePythonScript(const wchar_t* szFileName, int argc, char* argv[
     SetCurrentDirectoryW(szCurrentDir);
     fclose(fp);
 
-    if (result == NULL)
+    if (result < 0)
     {
         PyObject* exception, * v, * tb;
         PyErr_Fetch(&exception, &v, &tb);
@@ -139,9 +139,6 @@ static bool ExecutePythonScript(const wchar_t* szFileName, int argc, char* argv[
             return false;
         }
     }
-    else
-        Py_DECREF(result);
-
     _plugin_logputs("[PYTHON] Execution is done!");
     GuiUpdateAllViews();
     return true;
