@@ -280,7 +280,7 @@ static bool cbPyRunScriptAsyncCommand(int argc, char* argv[])
         return false;
     CloseHandle(CreateThread(nullptr, 0, [](void*) -> DWORD
     {
-        _plugin_logprintf("[PYTHON] Executing script: \"%s\"\n", Utf16ToUtf8(scriptName).c_str());
+        _plugin_logprintf("[PYTHON] Executing script in seperate thread: \"%s\"\n", Utf16ToUtf8(scriptName).c_str());
         ExecutePythonScript(scriptName.c_str(), int(scriptArgvPtr.size()), scriptArgvPtr.data());
         return 0;
     }, nullptr, 0, nullptr));
@@ -746,14 +746,7 @@ bool pyInit(PLUG_INITSTRUCT* initStruct)
     wcsncat_s(dir, token_paste(L, module_name), _TRUNCATE);
     GetShortPathNameW(dir, dir, _countof(dir));
     _plugin_logprintf("set python load path: %s\n", Utf16ToUtf8(dir).c_str());
-    PyList_Insert(PySys_GetObject("path"), 0, PyUnicode_FromString(Utf16ToUtf8(dir).c_str()));
-    PyRun_SimpleString("import sys\nprint(sys.path)\n"
-        "try:\n"
-        "  import x64dbgpy\n"
-        "  print(dir(x64dbgpy))\n"
-        "except Exception as e:\n"
-        "  print(\"exc\",e)\n"
-    );
+    PyList_Insert(PySys_GetObject("path"), 0, PyUnicode_FromUnicode(dir, wcslen(dir)));
 
     // Import x64dbgpy
     pModule = PyImport_Import(PyUnicode_FromString(module_name));

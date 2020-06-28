@@ -189,9 +189,16 @@ struct PyMemory
     static std::vector<PyMemoryPage> Map()
     {
         MEMMAP memmap = { 0 };
-        if(!DbgMemMap(&memmap))
-            throw std::invalid_argument("Failed to retrieve memory map.");
         std::vector<PyMemoryPage> result;
+#ifdef _WIN64
+        if (!GetModuleHandleW(L"x64gui.dll"))
+#else
+        if (!GetModuleHandleW(L"x32gui.dll"))
+#endif
+            return result;
+
+        if (!DbgMemMap(&memmap))
+            throw std::invalid_argument("Failed to retrieve memory map.");
         if(memmap.count)
         {
             result.resize(memmap.count);
@@ -205,7 +212,7 @@ struct PyMemory
     static duint Find(const std::string & pattern, duint start = 0)
     {
         auto map = Map();
-        if(map.empty())
+        if (map.empty())
             throw std::invalid_argument("Cannot find in empty memory map.");
 
         if(start == 0)
