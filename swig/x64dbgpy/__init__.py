@@ -7,6 +7,8 @@ from . import __registers
 from . import __events
 from . import __flags
 from . import __breakpoints
+from . __events import EventNames
+
 
 Register = __registers.Register()
 Event = __events.Event()

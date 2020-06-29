@@ -18,6 +18,25 @@ EVENTS = [
     'trace_execute'
 ]
 
+
+class EventNames(object):
+    stop_debug = 'stop_debug'
+    breakpoint = 'breakpoint'
+    create_process = 'create_process'
+    exit_process = 'exit_process'
+    exit_thread = 'exit_thread'
+    create_thread = 'create_thread'
+    system_breakpoint = 'system_breakpoint'
+    load_dll = 'load_dll'
+    unload_dll = 'unload_dll'
+    trace_execute = 'trace_execute'
+
+    bp_run = 10001
+    bp_stepin = 10002
+    bp_stepout = 10003
+    bp_stepover = 10004
+
+
 class Event(object):
     __metaclass__ = Singleton
 

@@ -6,6 +6,7 @@
 #include <psapi.h>
 #include <python.h>
 #include <shlwapi.h>
+#include "pluginsdk/_scriptapi_debug.h"
 
 #pragma comment(lib, "shlwapi.lib")
 
@@ -14,11 +15,12 @@
 #define token_paste_(a, b) a ## b
 #define event_object_name "Event"
 #define autorun_directory L"plugins\\x64dbgpy\\x64dbgpy\\autorun"
-// lParam: ScanCode=0x41(ALT), cRepeat=1, fExtended=False, fAltDown=True, fRepeat=False, fUp=False
-#define ALT_F7_SYSKEYDOWN 0x20410001
+// lParam: ScanCode=0x41(ALT), cRepeat=1, fExtended=False, fAltDown=True, fRepeat=1, fUp=True
+#define ALT_F7_SYSKEYUP 0xe0410001
 
 PyObject* pModule, *pEventObject;
 HINSTANCE hInst;
+static UINT MSG_ASYNC_DOSTH = ::RegisterWindowMessage(L"x64dbgpy.async.do.sth");
 
 enum
 {
@@ -45,29 +47,31 @@ extern "C" __declspec(dllexport) void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENT
     }
 }
 
-static void pyCallback(const char* eventName, PyObject* pKwargs)
+static long pyCallback(const char* eventName, PyObject* pKwargs)
 {
     PyObject* pFunc, *pValue;
-
+    long ret = 0;
     // Check if event object exist.
     if(pEventObject == NULL)
-        return;
+        return ret;
 
     pFunc = PyObject_GetAttrString(pEventObject, eventName);
     if(pFunc && PyCallable_Check(pFunc))
     {
         pValue = PyObject_Call(pFunc, PyTuple_New(0), pKwargs);
+        if (pValue && PyLong_Check(pValue))
+            ret = PyLong_AsLong(pValue);
         Py_DECREF(pKwargs);
         Py_DECREF(pFunc);
         if(pValue == NULL)
         {
             _plugin_logprintf("[PYTHON] Could not use %s function.\n", eventName);
             PyErr_PrintEx(0);
-            return;
         }
-
-        Py_DECREF(pValue);
+        else
+            Py_DECREF(pValue);
     }
+    return ret;
 }
 
 static bool OpenFileDialog(wchar_t Buffer[MAX_PATH])
@@ -310,18 +314,31 @@ static bool cbPythonCommandExecute(const char* cmd)
 
 static void cbWinEventCallback(CBTYPE cbType, void* info)
 {
+    auto pinfo = (PLUG_CB_WINEVENT*)info;
+    if (pinfo->retval || pinfo->result) return;
+
     MSG* msg = ((PLUG_CB_WINEVENT*)info)->message;
-    switch(msg->message)
+    if (msg->message == WM_SYSKEYUP)
     {
-    case WM_SYSKEYDOWN:
-        // Hotkeys
-        switch(msg->lParam)
-        {
-        case ALT_F7_SYSKEYDOWN:
+        if (msg->lParam == ALT_F7_SYSKEYUP)
             DbgCmdExec("PyRunGuiScript");
-            break;
+    }
+    else if (msg->message == MSG_ASYNC_DOSTH)
+    {
+        /* note: should sync with __event.py
+        bp_run = 10001
+        bp_stepin = 10002
+        bp_stepout = 10003
+        bp_stepover = 10004
+        */
+        switch (msg->lParam)
+        {
+        case 10001: DbgCmdExec("run"); break;
+        case 10002: DbgCmdExec("StepInto"); break;
+        case 10003: DbgCmdExec("StepOut"); break;
+        case 10004: DbgCmdExec("StepOver"); break;
+        default: break;
         }
-        break;
     }
 }
 

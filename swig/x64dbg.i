@@ -11,3 +11,5 @@
 
 //_scriptapi.h
 %include "_scriptapi.i"
+
+%include "misc.i"

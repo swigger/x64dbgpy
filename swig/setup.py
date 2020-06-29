@@ -29,7 +29,7 @@ setup(
         'x64dbgpy': ['autorun/*']
     },
     ext_modules=[Extension(
-        r'x64dbgpy.pluginsdk._x64dbg', [r'x64dbg.i'],
+        r'x64dbgpy.pluginsdk._x64dbg', [r'x64dbg.i', 'misc.cpp'],
         swig_opts=['-Wall', '-c++',
                    '-outdir', r'x64dbgpy\pluginsdk',
                    '-D"_WIN64"' if is_64bit() else ''],
@@ -38,7 +38,7 @@ setup(
         library_dirs=[r'..\pluginsdk'],
         libraries=['x64bridge', 'x64dbg'] if is_64bit() else ['x32bridge', 'x32dbg'],
         extra_compile_args=['/EHsc', '/MD', '/Zi'],
-        extra_link_args=["/debug"]
+        extra_link_args=["/debug", "user32.lib"]
     )],
     py_modules=['x64dbgpy.pluginsdk.x64dbg'],
     cmdclass={'build': SwigBuild},
