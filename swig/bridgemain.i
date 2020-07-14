@@ -6,6 +6,12 @@
 
 // Allow Python Buffers
 %include <pybuffer.i>
+%include cpointer.i
+%pointer_functions(int, intp);
+%pointer_functions(__int64, i64p);
+%pointer_functions(unsigned __int64, ui64p);
+%pointer_functions(bool, boolp);
+
 
 // Type Maps
 %pybuffer_string(char* text);

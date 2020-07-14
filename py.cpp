@@ -90,10 +90,71 @@ static bool OpenFileDialog(wchar_t Buffer[MAX_PATH])
     return (FALSE != GetOpenFileNameW(&sOpenFileName));
 }
 
+static void AddSysPath(const std::wstring & dir)
+{
+     PyObject* sysobj = PyImport_ImportModule("sys");
+    PyObject* strpath = PyUnicode_FromString("path");
+
+    PyObject* oldlst = PyObject_GetAttr(sysobj, strpath);
+    int oldsz = (int)PyList_Size(oldlst);
+
+    bool already = false;
+    {
+        //check dir already in sys.path.
+        for (int i = 0; i < oldsz; ++i)
+        {
+            PyObject * obb = PyList_GetItem(oldlst, i); //borrowed.
+            if (PyUnicode_Check(obb))
+            {
+                Py_ssize_t len1;
+                Py_UNICODE* v = PyUnicode_AsUnicodeAndSize(obb, &len1);
+                if (len1 == dir.length() && memcmp(v, dir.data(), sizeof(wchar_t)*dir.length() )==0)
+                {
+                    already = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (!already)
+    {
+        PyObject* newlst = PyList_New(oldsz + 1);
+        for (int i = 0; i < oldsz; ++i)
+        {
+            PyList_SET_ITEM(newlst, i, PyList_GET_ITEM(oldlst, i));
+            PyList_SET_ITEM(oldlst, i, NULL);
+        }
+        PyObject* str = PyUnicode_FromUnicode(dir.c_str(), dir.length());
+        PyList_SET_ITEM(newlst, oldsz, str);
+        PyObject_SetAttr(sysobj, strpath, newlst);
+        Py_XDECREF(newlst);
+        //Py_XDECREF(str); //NO, it's used by newlst.
+    }
+
+    Py_XDECREF(strpath);
+    Py_XDECREF(sysobj);
+    Py_XDECREF(oldlst);
+}
+
 static bool ExecutePythonScript(const wchar_t* szFileName, int argc, char* argv[])
 {
     wchar_t szCurrentDir[MAX_PATH] = L"";
     GetCurrentDirectoryW(_countof(szCurrentDir), szCurrentDir);
+
+    //add path of szfilename to sys.path.
+    {
+        // FIXME: should get full path name?
+        std::wstring wsfn(szFileName);
+        for (size_t i = wsfn.size(); i-- > 0; )
+        {
+            if (wsfn[i] == '/' || wsfn[i] == '\\')
+            {
+                wsfn.resize(i);
+                AddSysPath(wsfn);
+                break;
+            }
+        }
+    }
 
     FILE* fp = _wfopen(szFileName, L"r");
     if (!fp)
@@ -116,6 +177,7 @@ static bool ExecutePythonScript(const wchar_t* szFileName, int argc, char* argv[
         for (auto p : argv2) free(p);
         argv2.clear();
     }
+
 
     size_t fnalen = wcslen(szFileName) * 3 + 10;
     char* fna = (char*)malloc(fnalen);
